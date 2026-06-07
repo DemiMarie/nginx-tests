@@ -56,9 +56,9 @@ like(http_get('/foo/bar%'), qr/400 Bad/, 'percent');
 like(http_get('/foo/bar%1'), qr/400 Bad/, 'percent digit');
 
 like(http_get('/foo/bar/.?args'), qr!x /foo/bar/ x!, 'dot args');
-like(http_get('/foo/bar/.#frag'), qr!x /foo/bar/ x!, 'dot frag');
+like(http_get('/foo/bar/.#frag'), qr!\AHTTP/1\.1 400 Bad Request\r\n!aa, 'dot frag');
 like(http_get('/foo/bar/..?args'), qr!x /foo/ x!, 'dot dot args');
-like(http_get('/foo/bar/..#frag'), qr!x /foo/ x!, 'dot dot frag');
+like(http_get('/foo/bar/..#frag'), qr!\AHTTP/1\.1 400 Bad Request\r\n!aa, 'dot dot frag');
 like(http_get('/foo/bar/.'), qr!x /foo/bar/ x!, 'trailing dot');
 like(http_get('/foo/bar/..'), qr!x /foo/ x!, 'trailing dot dot');
 
@@ -66,14 +66,14 @@ like(http_get('http://localhost'), qr!x / x!, 'absolute');
 like(http_get('http://localhost/'), qr!x / x!, 'absolute slash');
 like(http_get('http://localhost?args'), qr!x / x.*y args y!ms,
 	'absolute args');
-like(http_get('http://localhost?args#frag'), qr!x / x.*y args y!ms,
+like(http_get('http://localhost?args#frag'), qr!\AHTTP/1\.1 400 Bad Request\r\n!aa,
 	'absolute args and frag');
 
 like(http_get('http://localhost:8080'), qr!x / x!, 'port');
 like(http_get('http://localhost:8080/'), qr!x / x!, 'port slash');
 like(http_get('http://localhost:8080?args'), qr!x / x.*y args y!ms,
 	'port args');
-like(http_get('http://localhost:8080?args#frag'), qr!x / x.*y args y!ms,
+like(http_get('http://localhost:8080?args#frag'), qr!\AHTTP/1\.1 400 Bad Request\r\n!aa,
 	'port args and frag');
 
 like(http_get('/ /'), qr/400 Bad/, 'space');
