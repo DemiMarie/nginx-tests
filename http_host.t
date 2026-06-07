@@ -247,18 +247,16 @@ like(http_absolute_path('[abcd::ef98:0:7654:321', 1), qr/ 400 /,
 # unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
 #
 
-is(http_host_header(
+like(http_host_header(
 	'[v0123456789aBcDeF.!$&\'()*+,;=-._~AbCdEfGhIjKlMnOpQrStUvWxYz'
 	. '0123456789:]'),
-	'[v0123456789abcdef.!$&\'()*+,;=-._~abcdefghijklmnopqrstuvwxyz'
-	. '0123456789:]',
+	qr/400 Bad Request/,
 	'IPvFuture all symbols (host header)');
 
-is(http_absolute_path(
+like(http_absolute_path(
 	'[v0123456789aBcDeF.!$&\'()*+,;=-._~AbCdEfGhIjKlMnOpQrStUvWxYz'
 	. '0123456789:]'),
-	'[v0123456789abcdef.!$&\'()*+,;=-._~abcdefghijklmnopqrstuvwxyz'
-	. '0123456789:]',
+	qr/400 Bad Request/,
 	'IPvFuture all symbols (absolute request)');
 
 like(http_host_header("localhost\nHost: again", 1), qr/ 400 /, 'host repeat');
