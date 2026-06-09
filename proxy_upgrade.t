@@ -149,7 +149,7 @@ open my $f, '<', "$d/cc.log" or die "Can't open cc.log: $!";
 
 is($f->getline(), shift (@r) . " 540793 upgrade\n", 'log - bytes');
 is($f->getline(), shift (@r) . " 22 upgrade\n", 'log - bytes pipelined');
-like($f->getline(), qr/\A\d+ \d+ ugprade\n\z/aa, 'log - bytes noupgrade');
+like($f->getline(), qr/\A\d+ \d+ keep-alive\n\z/aa, 'log - bytes noupgrade');
 
 ###############################################################################
 

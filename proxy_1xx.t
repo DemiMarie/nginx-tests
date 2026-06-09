@@ -17,6 +17,7 @@ use lib 'lib';
 use Test::Nginx;
 use Test::Nginx::HTTP2;
 use Test::Nginx::HTTP3;
+use Data::Dumper;
 
 ###############################################################################
 
@@ -24,7 +25,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_v2 http_v3 proxy/)
-	->has_daemon('openssl')->plan(296)
+	->has_daemon('openssl')->plan(690)
 	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
@@ -36,6 +37,7 @@ events {
 
 http {
     %%TEST_GLOBALS_HTTP%%
+    error_log /dev/tty info;
 
     ssl_certificate_key localhost.key;
     ssl_certificate localhost.crt;
@@ -47,6 +49,7 @@ http {
         listen       127.0.0.1:8080;
         server_name  localhost;
         http2        on;
+        early_hints  1;
 
         access_log %%TESTDIR%%/test.log test;
 
@@ -91,8 +94,17 @@ foreach my $s (Test::Nginx::HTTP2->new(), Test::Nginx::HTTP3->new()) {
 	foreach my $status (101, @bad_statuses) {
                 my $sid = $s->new_stream({ host => 'localhost', path => "/$status" });
 		my $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
-		my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
-		is($frame->{headers}->{':status'}, $status == 101 ? 502 : 200, "unhandlable request status $status");
+		my (@frame) = grep { $_->{type} eq "HEADERS" } @$frames;
+		if ($status == 101) {
+			is($#frame, 0);
+			is($frame[0]->{headers}->{':status'},
+			   502, "unhandlable request status $status");
+		} else {
+			is($#frame, 1);
+			is($frame[0]->{headers}->{':status'},
+			   $status, "handlable request status $status");
+			is($frame[1]->{headers}->{':status'}, 200, "final response");
+		}
 	}
 }
 ###############################################################################
@@ -133,6 +145,7 @@ sub http_daemon {
 		if ($uri =~ qr|\A/(1[0-9][0-9])\z|) {
 			print $client <<EOF;
 HTTP/1.1 $1 Something
+Link: silly
 
 HTTP/1.1 200 OK
 Connection: close

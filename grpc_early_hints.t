@@ -85,7 +85,7 @@ foreach my $name ('localhost') {
 		or die "Can't create certificate for $name: $!\n";
 }
 
-$t->try_run('no early_hints')->plan(14);
+$t->try_run('no early_hints')->plan(210);
 
 ###############################################################################
 
@@ -116,9 +116,9 @@ for (my $status = 100; $status < 200; $status++) {
 	if ($status == 100) {
 		$status++;
 	}
+        $frame = shift @$frames;
 }
 
-$frame = shift @$frames;
 is($frame->{headers}{':status'}, 200, 'h2 header');
 
 $frame = shift @$frames;
@@ -310,11 +310,11 @@ sub h2_grpc {
 		my (%extra) = @_;
 		for my $i (100, 102..199) {
 			$c->new_stream({ body_more => 1, headers => [
-						{ name => ':status', value => '103' },
-						{ name => 'link', value => 'foo', mode => 1 },
-						{ name => 'x-connection', value => $n, mode => 2 },
-					]}, $sid);
-	}
+				{ name => ':status', value => "$i" },
+				{ name => 'link', value => 'foo', mode => 1 },
+				{ name => 'x-connection', value => $n, mode => 2 },
+			]}, $sid);
+		}
 		$c->new_stream({ body_more => 1, headers => [
 			{ name => ':status', value => '200', mode => 0 },
 			{ name => 'content-type', value => 'application/grpc' }
