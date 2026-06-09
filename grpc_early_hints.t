@@ -110,8 +110,13 @@ my $frames = $f->{http_end}();
 @$frames = grep { $_->{type} =~ "HEADERS|DATA" } @$frames;
 
 my $frame = shift @$frames;
-is($frame->{headers}{':status'}, 103, 'h2 early hints');
-ok($frame->{headers}{'link'}, 'h2 early header');
+for (my $status = 100; $status < 200; $status++) {
+	is($frame->{headers}{':status'}, $status, 'h2 early hints');
+	ok($frame->{headers}{'link'}, 'h2 early header');
+	if ($status == 100) {
+		$status++;
+	}
+}
 
 $frame = shift @$frames;
 is($frame->{headers}{':status'}, 200, 'h2 header');
@@ -215,10 +220,15 @@ EOF
 	$f->{http_end} = sub {
 		my (%extra) = @_;
 		my $body_more = 1 unless $extra{only};
-		$c->new_stream({ body_more => $body_more, headers => [
-			{ name => ':status', value => '103' },
-			{ name => 'link', value => 'foo', mode => 1 },
-		]}, $sid);
+		for (my $status = 100; $status < 200; $status++) {
+			$c->new_stream({ body_more => $body_more, headers => [
+				{ name => ':status', value => "$status" },
+				{ name => 'link', value => 'foo', mode => 1 },
+			]}, $sid);
+			if ($status == 100) {
+				$status++;
+			}
+		}
 
 		return http('', socket => $s) if $extra{only};
 
@@ -298,11 +308,13 @@ sub h2_grpc {
 	};
 	$f->{http_end} = sub {
 		my (%extra) = @_;
-		$c->new_stream({ body_more => 1, headers => [
-			{ name => ':status', value => '103' },
-			{ name => 'link', value => 'foo', mode => 1 },
-			{ name => 'x-connection', value => $n, mode => 2 },
-		]}, $sid);
+		for my $i (100, 102..199) {
+			$c->new_stream({ body_more => 1, headers => [
+						{ name => ':status', value => '103' },
+						{ name => 'link', value => 'foo', mode => 1 },
+						{ name => 'x-connection', value => $n, mode => 2 },
+					]}, $sid);
+	}
 		$c->new_stream({ body_more => 1, headers => [
 			{ name => ':status', value => '200', mode => 0 },
 			{ name => 'content-type', value => 'application/grpc' }

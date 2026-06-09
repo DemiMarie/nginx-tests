@@ -25,7 +25,7 @@ use Test::Nginx::HTTP2;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http http_v2/)->plan(0)
+my $t = Test::Nginx->new()->has(qw/http http_v2/)->plan(23)
 	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
@@ -72,37 +72,32 @@ $t->run();
 
 my ($sid, $frames, $frame);
 
-# make sure there is no socket leak when the request is rejected
-# due to missing mandatory ":scheme" pseudo-header and "return 444;"
-# is used in error_page 400 (ticket #274)
-
-open (my $flags, '>', "/dev/tty") or die "Failed to open /dev/tty: $!";
-sub print_frames {
-    print { $flags } (Dumper(get(@_)));
-}
-
-sub get_frames ($frames) {
-        my $seen_data = 0;
-        my $previous_status = 199;
-        map {
-                if ($_->{type} == 'HEADERS') {
-                        cmp_ok($previous_status, '<', 200);
-                } elsif ($_->{type} == 'DATA') {
-                        cmp_ok($previous_status, '>=', 200);
-                    }
-        };
+sub get_frames ($frames, $rest) {
+	my $seen_data = 0;
+	my $previous_status = 199;
+	map {
+		if ($_->{type} eq 'HEADERS') {
+			my $bad = shift @$rest;
+			cmp_ok($previous_status, '<', 200);
+			cmp_ok($previous_status, '>=', 100);
+			cmp_ok($previous_status, '!=', 101);
+                        $previous_status = $_->{headers}{':status'};
+			cmp_ok($previous_status, '==', $bad);
+		} elsif ($_->{type} eq 'DATA') {
+			cmp_ok($previous_status, '==', 200);
+		}
+	} @$frames;
 }
 
 
-print_frames("/multi");
-print_frames("/header");
+get_frames(get("/multi"), [200]);
+get_frames(get("/header"), [100, 102, 103, 200]);
 
 ###############################################################################
 
 sub get {
 	my ($path) = @_;
-        my $host = 'localhost';
-
+	my $host = 'localhost';
 	my $s = Test::Nginx::HTTP2->new();
 	my $sid = $s->new_stream({ host => '127.0.0.1:8080', path => $path });
 	return $s->read(all => [{ sid => $sid, fin => 1 }]);

@@ -92,7 +92,7 @@ foreach my $s (Test::Nginx::HTTP2->new(), Test::Nginx::HTTP3->new()) {
                 my $sid = $s->new_stream({ host => 'localhost', path => "/$status" });
 		my $frames = $s->read(all => [{ sid => $sid, fin => 1 }]);
 		my ($frame) = grep { $_->{type} eq "HEADERS" } @$frames;
-		is($frame->{headers}->{':status'}, $status == 101 ? 500 : 200, "unhandlable request status $status");
+		is($frame->{headers}->{':status'}, $status == 101 ? 502 : 200, "unhandlable request status $status");
 	}
 }
 ###############################################################################
